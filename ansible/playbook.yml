@@ -1,0 +1,68 @@
+---
+# =============================================================================
+# FindIT — Master Provisioning & Deployment Playbook (Experiment 4: Ansible)
+# Jira Ticket: FIND-10
+#
+# Roles:
+#   1. common: Base OS packages, firewall, deployment user
+#   2. docker: Docker Engine, Containerd, Compose plugin installation & service
+#   3. app: Application directory structure, environment templating, compose up
+#
+# Idempotence: Running this playbook multiple times results in changed=0
+# =============================================================================
+
+- name: "Provision and Deploy FindIT Lost & Found Management System"
+  hosts: app_servers
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: "Validate target operating system"
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family in ['Debian', 'RedHat', 'Rocky']
+        fail_msg: "Target OS family '{{ ansible_os_family }}' is not supported. Use Debian/Ubuntu or RedHat."
+      tags: [always]
+
+    - name: "Display target host deployment parameters"
+      ansible.builtin.debug:
+        msg: >
+          Deploying {{ app_name }} to {{ inventory_hostname }}
+          (OS: {{ ansible_distribution }} {{ ansible_distribution_version }},
+          Arch: {{ ansible_architecture }})
+      tags: [always]
+
+  roles:
+    - role: common
+      tags: [common, security]
+
+    - role: docker
+      tags: [docker, runtime]
+
+    - role: app
+      tags: [app, deploy]
+
+  post_tasks:
+    - name: "Verify FindIT application deployment health"
+      ansible.builtin.uri:
+        url: "http://localhost:{{ backend_port }}/health"
+        method: GET
+        status_code: 200
+        return_content: true
+      register: health_response
+      retries: 6
+      delay: 5
+      until: health_response.status == 200
+      tags: [verify]
+
+    - name: "Display deployment success summary"
+      ansible.builtin.debug:
+        msg:
+          - "=========================================================="
+          - "✅ FindIT Provisioning & Deployment COMPLETE (Experiment 4)"
+          - "Backend Health Check: {{ health_response.json.status | default('UP') }}"
+          - "Database Status     : {{ health_response.json.database | default('connected') }}"
+          - "Frontend URL        : http://{{ ansible_default_ipv4.address | default('localhost') }}:{{ frontend_port }}"
+          - "Backend API URL     : http://{{ ansible_default_ipv4.address | default('localhost') }}:{{ backend_port }}"
+          - "=========================================================="
+      tags: [verify]

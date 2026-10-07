@@ -1,0 +1,54 @@
+---
+# =============================================================================
+# Role: common — Tasks (OS hardening and baseline utilities)
+# =============================================================================
+
+- name: "Update apt package cache"
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == 'Debian'
+
+- name: "Install fundamental system packages"
+  ansible.builtin.package:
+    name:
+      - curl
+      - gnupg
+      - ca-certificates
+      - lsb-release
+      - git
+      - htop
+      - ufw
+      - tar
+      - unzip
+    state: present
+
+- name: "Create dedicated deployment group"
+  ansible.builtin.group:
+    name: "{{ app_group }}"
+    state: present
+    system: true
+
+- name: "Create dedicated deployment user"
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    shell: /bin/bash
+    home: "/home/{{ app_user }}"
+    create_home: true
+    state: present
+    system: true
+
+- name: "Configure UFW firewall allowed incoming ports"
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - "22"   # SSH
+    - "80"   # HTTP
+    - "443"  # HTTPS
+    - "{{ frontend_port }}" # 3000 FindIT Frontend
+    - "{{ backend_port }}"  # 5000 FindIT Backend
+  when: ansible_os_family == 'Debian'
+  ignore_errors: true # In containerized test runners UFW may lack kernel iptables

@@ -1,0 +1,9 @@
+---
+# =============================================================================
+# Role: app — Handlers
+# =============================================================================
+
+- name: Restart FindIT
+  ansible.builtin.command:
+    cmd: "docker compose --env-file .env restart"
+    chdir: "{{ app_dir }}"

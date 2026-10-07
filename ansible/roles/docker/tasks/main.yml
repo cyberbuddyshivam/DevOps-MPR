@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# Role: docker — Tasks (Docker CE Engine & Docker Compose Plugin)
+# =============================================================================
+
+- name: "Create keyrings directory for APT keys"
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  when: ansible_os_family == 'Debian'
+
+- name: "Download official Docker GPG armored key"
+  ansible.builtin.get_url:
+    url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+    dest: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+    force: false
+  when: ansible_os_family == 'Debian'
+
+- name: "Add official Docker APT repository"
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }} signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/{{ ansible_distribution | lower }}
+      {{ ansible_distribution_release }} stable
+    state: present
+    filename: docker
+  when: ansible_os_family == 'Debian'
+
+- name: "Install Docker packages (Engine, CLI, Containerd, Compose plugin)"
+  ansible.builtin.package:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+
+- name: "Ensure docker service is enabled and started"
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: "Add deployment user to docker group"
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    groups: docker
+    append: true
