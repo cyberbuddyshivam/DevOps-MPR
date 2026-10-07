@@ -21,9 +21,9 @@ The primary objective of this project is demonstrating genuine, visible DevOps e
 |:---:|---|---|:---:|
 | **1** | Agile Lifecycle using Jira + DevOps | Atlassian Jira Cloud (`FIND-01`..`12`), 2 Sprints, 5-column board | ✅ Complete |
 | **2** | Version Control using Git | GitFlow (`main`, `develop`, `feature/*`), PR template, Conventional Commits | ✅ Complete |
-| **3** | Continuous Integration using GitHub Actions | `.github/workflows/ci.yml`, Lint, Unit/API tests, Docker build | ⏳ Phase 4 |
+| **3** | Continuous Integration using GitHub Actions | `.github/workflows/ci.yml`, Lint, Unit/API tests, Docker build | ✅ Complete |
 | **4** | Provisioning & Configuration using Ansible | `ansible/playbook.yml`, `roles/docker`, `roles/app`, Idempotence | ⏳ Phase 7 |
-| **5** | Containerization using Docker | Multi-stage `Dockerfile` (Alpine, non-root `node`, Healthchecks) | ⏳ Phase 5 |
+| **5** | Containerization using Docker | Multi-stage `Dockerfile` (Alpine, non-root `node`, Healthchecks) | ✅ Complete |
 | **6** | Multi-Service Deployment using Docker Compose | `docker/docker-compose.yml`, health checks, network & volume isolation | ⏳ Phase 6 |
 | **7** | Container Management using Kubernetes | Manifests in `k8s/`, Deployments, Probes, Scaling, Self-healing | ⏳ Phase 8 |
 
@@ -49,4 +49,38 @@ FindIT/
 
 ## 🚀 Quick Start (Local Development)
 
-*(Detailed setup and all 4 run modes documented in `docs/REPORT.md` and `docs/PLAN.md`)*
+### Prerequisites
+- Node.js 20 LTS, npm 10+
+- Docker Desktop (for Compose/Kubernetes modes)
+- PostgreSQL 16 (optional — in-memory fallback is built-in)
+
+### 1. Backend
+```bash
+cd backend
+npm install
+npm test        # 23 tests — all should pass
+npm run dev     # starts on http://localhost:5000
+```
+
+### 2. Frontend
+```bash
+cd frontend
+npm install
+npm run dev     # starts on http://localhost:5173 (proxied to :5000)
+```
+
+### 3. Docker Compose (all services)
+```bash
+# requires: docker/docker-compose.yml and backend/Dockerfile + frontend/Dockerfile
+docker compose -f docker/docker-compose.yml up --build
+# → frontend: http://localhost:3000  backend: http://localhost:5000
+```
+
+### 4. Kubernetes (minikube/kind)
+```bash
+# See docs/CI_DEMO.md and k8s/ directory for full instructions
+kubectl apply -f k8s/
+kubectl get pods,svc -n findit
+```
+
+> **Detailed setup and all run modes:** See [`docs/PLAN.md`](docs/PLAN.md) and [`docs/CI_DEMO.md`](docs/CI_DEMO.md)
