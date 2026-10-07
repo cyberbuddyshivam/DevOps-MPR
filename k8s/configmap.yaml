@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: findit-config
+  namespace: findit
+  labels:
+    app.kubernetes.io/name: findit
+data:
+  PORT: "5000"
+  NODE_ENV: "production"
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "findit_db"
+  FRONTEND_URL: "http://localhost:30080"
