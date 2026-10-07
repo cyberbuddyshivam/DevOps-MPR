@@ -25,7 +25,7 @@ RUN npm ci
 # Copy source and config files
 COPY index.html vite.config.js tailwind.config.js postcss.config.js ./
 COPY src/ ./src/
-COPY public/ ./public/ 2>/dev/null || true
+COPY public/ ./public/
 
 # Build the Vite production bundle — outputs to /app/dist
 RUN npm run build
