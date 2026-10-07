@@ -22,7 +22,7 @@ The primary objective of this project is demonstrating genuine, visible DevOps e
 | **1** | Agile Lifecycle using Jira + DevOps | Atlassian Jira Cloud (`FIND-01`..`12`), 2 Sprints, 5-column board | ✅ Complete |
 | **2** | Version Control using Git | GitFlow (`main`, `develop`, `feature/*`), PR template, Conventional Commits | ✅ Complete |
 | **3** | Continuous Integration using GitHub Actions | `.github/workflows/ci.yml`, Lint, Unit/API tests, Docker build | ✅ Complete |
-| **4** | Provisioning & Configuration using Ansible | `ansible/playbook.yml`, `roles/docker`, `roles/app`, Idempotence | ⏳ Phase 7 |
+| **4** | Provisioning & Configuration using Ansible | `ansible/playbook.yml`, `roles/docker`, `roles/app`, Idempotence | ✅ Complete |
 | **5** | Containerization using Docker | Multi-stage `Dockerfile` (Alpine, non-root `node`, Healthchecks) | ✅ Complete |
 | **6** | Multi-Service Deployment using Docker Compose | `docker/docker-compose.yml`, health checks, network & volume isolation | ✅ Complete |
 | **7** | Container Management using Kubernetes | Manifests in `k8s/`, Deployments, Probes, Scaling, Self-healing | ⏳ Phase 8 |

@@ -1,0 +1,68 @@
+---
+# =============================================================================
+# Role: app — Tasks (FindIT Application Deployment via Docker Compose)
+# =============================================================================
+
+- name: "Create application deployment directories"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  loop:
+    - "{{ app_dir }}"
+    - "{{ app_dir }}/database"
+    - "{{ app_dir }}/backend"
+    - "{{ app_dir }}/frontend"
+
+- name: "Deploy environment configuration from Jinja2 template"
+  ansible.builtin.template:
+    src: .env.j2
+    dest: "{{ app_dir }}/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0600'
+  notify: Restart FindIT
+
+- name: "Copy database initialization schema"
+  ansible.builtin.copy:
+    src: ../../../database/init.sql
+    dest: "{{ app_dir }}/database/init.sql"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+
+- name: "Copy docker-compose.yml"
+  ansible.builtin.copy:
+    src: ../../../docker-compose.yml
+    dest: "{{ app_dir }}/docker-compose.yml"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+  notify: Restart FindIT
+
+- name: "Copy backend application source tree"
+  ansible.builtin.copy:
+    src: ../../../backend/
+    dest: "{{ app_dir }}/backend/"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  notify: Restart FindIT
+
+- name: "Copy frontend application source tree"
+  ansible.builtin.copy:
+    src: ../../../frontend/
+    dest: "{{ app_dir }}/frontend/"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  notify: Restart FindIT
+
+- name: "Deploy and start FindIT multi-service stack via Docker Compose"
+  ansible.builtin.command:
+    cmd: "docker compose --env-file .env up -d --build"
+    chdir: "{{ app_dir }}"
+  register: compose_up_result
+  changed_when: "'Created' in compose_up_result.stdout or 'Recreated' in compose_up_result.stdout or 'Started' in compose_up_result.stdout"
