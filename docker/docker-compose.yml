@@ -1,0 +1,129 @@
+# =============================================================================
+# FindIT — Docker Compose Multi-Service Deployment (Experiment 6)
+# Jira Ticket: FIND-09
+#
+# Architecture:
+#   1. postgres: PostgreSQL 16 Alpine database with persistent named volume
+#   2. backend:  Express REST API + Matching Engine (depends on healthy postgres)
+#   3. frontend: React SPA served by Nginx (depends on healthy backend)
+#
+# Network: Isolated bridge network 'findit-network'
+# Persistence: Named volume 'findit-db-data'
+# Health checks ensure deterministic, ordered startup sequence
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. DATABASE SERVICE — PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: findit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-findit_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - findit-db-data:/var/lib/postgresql/data
+      - ../database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - findit-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-findit_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.50'
+
+  # ---------------------------------------------------------------------------
+  # 2. BACKEND API SERVICE — Node.js Express + Matching Engine
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: findit-backend:v1.0.0
+    container_name: findit-backend
+    restart: unless-stopped
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME: ${POSTGRES_DB:-findit_db}
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - findit-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.50'
+
+  # ---------------------------------------------------------------------------
+  # 3. FRONTEND UI SERVICE — React SPA on Nginx Alpine
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: findit-frontend:v1.0.0
+    container_name: findit-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - findit-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/nginx-health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+
+# -----------------------------------------------------------------------------
+# ISOLATED BRIDGE NETWORK
+# -----------------------------------------------------------------------------
+networks:
+  findit-network:
+    name: findit-network
+    driver: bridge
+
+# -----------------------------------------------------------------------------
+# PERSISTENT STORAGE VOLUMES
+# -----------------------------------------------------------------------------
+volumes:
+  findit-db-data:
+    name: findit-db-data
+    driver: local

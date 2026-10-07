@@ -7,7 +7,8 @@
 # Stage 2 (runtime): Nginx Alpine — serves static assets on port 80
 #                    Tiny final image (~25MB). No Node.js runtime needed at runtime.
 #
-# HEALTHCHECK: Nginx responds to HTTP GET / on port 80
+# Reverse Proxy: Proxies /api/ and /health to backend:5000 in Docker network
+# HEALTHCHECK:   Nginx responds to HTTP GET /nginx-health on port 80
 # =============================================================================
 
 # ---- Stage 1: Builder ----
@@ -22,10 +23,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # Copy source and config files
-COPY index.html ./
-COPY vite.config.js ./
-COPY tailwind.config.js ./
-COPY postcss.config.js ./
+COPY index.html vite.config.js tailwind.config.js postcss.config.js ./
 COPY src/ ./src/
 COPY public/ ./public/ 2>/dev/null || true
 
@@ -38,35 +36,11 @@ FROM nginx:1.27-alpine AS runtime
 # Remove default nginx configuration
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Copy our custom nginx configuration
+# Copy compiled static assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Write nginx config: serve SPA with fallback to index.html for React Router
-# Also proxies /api and /health to backend service
-RUN printf 'server {\n\
-    listen 80;\n\
-    server_name _;\n\
-    root /usr/share/nginx/html;\n\
-    index index.html;\n\
-\n\
-    # Serve static assets with cache headers\n\
-    location /assets/ {\n\
-        expires 1y;\n\
-        add_header Cache-Control "public, immutable";\n\
-    }\n\
-\n\
-    # React SPA fallback — all unknown routes return index.html\n\
-    location / {\n\
-        try_files $uri $uri/ /index.html;\n\
-    }\n\
-\n\
-    # Health check endpoint for the nginx container itself\n\
-    location /nginx-health {\n\
-        access_log off;\n\
-        return 200 "healthy\\n";\n\
-        add_header Content-Type text/plain;\n\
-    }\n\
-}\n' > /etc/nginx/conf.d/findit.conf
+# Copy custom Nginx configuration with reverse proxy & SPA fallback
+COPY nginx.conf /etc/nginx/conf.d/findit.conf
 
 # Expose port 80
 EXPOSE 80
